@@ -172,7 +172,7 @@ def obtener_ultimo_video(youtube_api_key):
 def enviar_whatsapp(mensaje):
     id_instance = os.environ.get('GREEN_INSTANCE')
     api_token = os.environ.get('GREEN_TOKEN')
-    group_id = "573142306674-1607440499@g.us"
+    group_id = "573142306674@c.us"
     
     url = f"https://api.green-api.com/waInstance{id_instance}/sendMessage/{api_token}"
     payload = {
