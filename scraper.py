@@ -66,17 +66,13 @@ def parsear_contenido_web(textos):
     return titulo, biblico, complementario, devocional_raw, oracion
 
 def formatear_parrafos_con_ia_o_fallback(texto_devocional, api_key):
-    """
-    Formatea cada párrafo con un emoji temático al inicio y al final.
-    Intenta primero con Gemini 3.6 Flash; si falla, usa el fallback inteligente.
-    """
     if not texto_devocional:
         return ""
         
     if api_key:
         try:
             client = genai.Client(api_key=api_key)
-            prompt = f"""Actúa como un editor devocional para WhatsApp.
+            prompt = f"""Actúa como un editor devocional cristiano para WhatsApp.
 Toma el siguiente texto devocional y realiza lo siguiente:
 1. Mantén TODO el contenido 100% completo, sin resumir ni omitir ideas o detalles.
 2. Divide el texto en 3 a 5 párrafos bien estructurados.
@@ -94,13 +90,12 @@ Devuelve ÚNICAMENTE los párrafos formateados, separados por doble salto de lí
                     res = client.models.generate_content(model=modelo, contents=prompt)
                     if res and res.text and res.text.strip():
                         return res.text.strip()
-                except Exception as ex:
-                    print(f"Modelo {modelo} ocupado para texto: {ex}")
+                except Exception:
                     continue
         except Exception as e:
-            print("Error general al formatear texto con Gemini:", e)
+            print("Error al formatear texto con Gemini:", e)
 
-    # Fallback inteligente en Python (garantiza texto completo con emojis temáticos)
+    # Fallback confiable en Python
     oraciones = re.split(r'(?<=[.!?])\s+', texto_devocional)
     tam_parrafo = 3
     grupos = [oraciones[i:i + tam_parrafo] for i in range(0, len(oraciones), tam_parrafo)]
@@ -126,37 +121,40 @@ Devuelve ÚNICAMENTE los párrafos formateados, separados por doble salto de lí
 
 def extraer_porciones_con_ia(img_url, dia_numero, mes_nombre, api_key):
     """
-    Descarga la imagen del mes y utiliza la visión multimodal de Gemini 3.6 Flash
+    Descarga la imagen del mes y utiliza la visión multimodal de Gemini Files API
     para ubicar el día exacto y extraer los versículos.
     """
     if not img_url:
-        return "📖 Lectura bíblica en el canal."
+        return "📖 Lectura bíblica disponible en el canal."
         
     if api_key:
         try:
             headers = {'User-Agent': 'Mozilla/5.0'}
             img_data = requests.get(img_url, headers=headers, verify=False).content
-            from google.genai import types
             
+            temp_path = "guia_mes_temp.jpg"
+            with open(temp_path, "wb") as f:
+                f.write(img_data)
+                
             client = genai.Client(api_key=api_key)
-            prompt = f"""Esta imagen contiene la 'Guía del mes' o 'Provisión Bíblica Diaria' con un calendario de lecturas bíblicas diarias.
-Busca la casilla o fila correspondiente al día {dia_numero} (o {dia_numero} de {mes_nombre}).
-Extrae las lecturas o libros y capítulos bíblicos asignados para ese día específico.
-Devuélvelos formateados exactamente con este estilo y emojis:
+            archivo_subido = client.files.upload(file=temp_path)
+            
+            prompt = f"""Analiza esta imagen que contiene el calendario de 'Guía del mes' o 'Provisión Bíblica Diaria'.
+Hoy es el día {dia_numero} de {mes_nombre}.
+1. Localiza la casilla o recuadro del día {dia_numero} en el calendario.
+2. Extrae las lecturas bíblicas asignadas para ese día {dia_numero}.
+3. Devuélvelas exactamente con este formato de 3 líneas:
 📖 [Primera lectura]
 ✍🏽 [Segunda lectura]
 🛐  [Tercera lectura o Salmo]
 
-Devuelve ÚNICAMENTE los versículos encontrados con sus emojis:"""
-            
+Devuelve ÚNICAMENTE los versículos con sus emojis, sin texto adicional."""
+
             for modelo in ['gemini-3.6-flash', 'gemini-3.7-flash', 'gemini-3.8-flash']:
                 try:
                     response = client.models.generate_content(
                         model=modelo,
-                        contents=[
-                            types.Part.from_bytes(data=img_data, mime_type='image/jpeg'),
-                            prompt
-                        ]
+                        contents=[archivo_subido, prompt]
                     )
                     if response and response.text and response.text.strip():
                         return response.text.strip()
@@ -188,9 +186,8 @@ def enviar_whatsapp(mensaje):
     id_instance = os.environ.get('GREEN_INSTANCE')
     api_token = os.environ.get('GREEN_TOKEN')
     
-    # MODO PRUEBAS: Enviando a tu propio chat personal (573142306674)
-    # Cuando termines y quieras enviarlo al grupo definitivo, cámbialo por: "573142306674-1607440499@g.us"
-    destinatario = "573142306674@c.us"
+    # DESTINATARIO: Grupo "EN CASA CON DIOS"
+    destinatario = "573142306674-1607440499@g.us"
     
     url = f"https://api.green-api.com/waInstance{id_instance}/sendMessage/{api_token}"
     payload = {
@@ -226,7 +223,7 @@ def main():
     # 4. Obtener video de YouTube
     titulo_video, url_video = obtener_ultimo_video(youtube_key)
     
-    # 5. Obtener porciones bíblicas de la imagen con IA (Gemini 3.6 Flash)
+    # 5. Obtener porciones bíblicas de la imagen con Gemini Files API
     porciones_biblicas = extraer_porciones_con_ia(img_url, hoy.day, mes_nombre.lower(), gemini_key)
     
     # 6. Ensamblaje del mensaje completo
