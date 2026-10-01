@@ -2,8 +2,9 @@ name: Daily Devocional Bot
 
 on:
   schedule:
-    # Corre a las 10:00 AM UTC (que son las 5:00 AM hora de Colombia)
-    - cron: '0 10 * * 1-5'
+    # Corre a las 09:52 UTC (4:52 AM hora de Colombia, de lunes a viernes)
+    # Se programa minutos antes de las 5:00 AM para evitar congestión en GitHub
+    - cron: '52 9 * * 1-5'
   workflow_dispatch: # Permite correrlo manualmente desde GitHub
 
 jobs:
